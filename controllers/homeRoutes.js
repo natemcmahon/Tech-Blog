@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { Post, User } = require('../models');
+const { Post, User, Comment} = require('../models');
 const withAuth = require('../utils/auth');
 
 router.get('/', async (req, res) => {
@@ -11,6 +11,10 @@ router.get('/', async (req, res) => {
           model: User,
           attributes: ['name'],
         },
+        {
+          model: Comment,
+          attributes: ['body'],
+        }
       ],
     });
 
@@ -42,7 +46,8 @@ router.get('/post/:id', async (req, res) => {
 
     res.render('post', {
       ...post,
-      logged_in: req.session.logged_in
+      logged_in: req.session.logged_in,
+      currentUser: req.session.user_id,
     });
   } catch (err) {
     res.status(500).json(err);
@@ -79,10 +84,9 @@ router.get('/login', (req, res) => {
   res.render('login');
 });
 
-// should I be navigating to /edit or /edit/:id  ?
-router.get('/edit', withAuth, async (req, res) => {
+router.get('/edit/:id', withAuth, async (req, res) => {
   try {
-    const postData = await Post.findAll(req.params.id, {
+    const postData = await Post.findByPk(req.params.id, {
       include: [
         {
           model: User,
@@ -92,11 +96,11 @@ router.get('/edit', withAuth, async (req, res) => {
     });
 
     // Serialize data so the template can read it
-    const posts = postData.map((post) => post.get({ plain: true }));
+    const post = postData.get({ plain: true });
 
     // Pass serialized data and session flag into template
     res.render('edit', { 
-      posts, 
+      ...post, 
       logged_in: req.session.logged_in 
     });
   } catch (err) {
